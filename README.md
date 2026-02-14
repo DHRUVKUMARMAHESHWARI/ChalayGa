@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# ChalayGa? - Minimalist Meetup App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A sophisticated, minimalist meetup planning application designed for users aged 17-30. Built with **React Native**, **Expo Router**, and **TypeScript**.
 
-## Get started
+---
 
-1. Install dependencies
+## 🎨 Design System
 
+This project implements a custom design system focused on maturity, clarity, and calm.
+
+- **Outcome**: A professional, emoji-free interface with a refined color palette.
+- **Documentation**: See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for full guidelines.
+- **Quick Reference**: See [DESIGN_SPECS.md](./DESIGN_SPECS.md) for copy-paste values.
+- **Summary of Changes**: See [REDESIGN_SUMMARY.md](./REDESIGN_SUMMARY.md) for implementation details.
+
+### Key Features
+- **Sophisticated Color Palette**: Muted blue-grey primary with functional accents.
+- **Advanced Typography**: 7-level type scale with consistent hierarchy.
+- **Custom Icon System**: 20+ SVG outline icons replacing emojis.
+- **Unified Navigation**: Single bottom tab bar experience.
+
+---
+
+## 📂 Project Structure
+
+The project follows a standard Expo Router structure with separation of concerns:
+
+```
+ChalayGa/
+├── app/                  # Expo Router pages
+│   ├── index.tsx         # Home screen route
+│   ├── room.tsx          # Meetup details route
+│   └── _layout.tsx       # Root layout configuration
+│
+├── src/
+│   ├── components/       # Reusable UI components
+│   │   ├── Icon.tsx      # Custom SVG icon system
+│   │   ├── Button.tsx    # Standardized button component
+│   │   ├── Card.tsx      # Card container component
+│   │   └── ...           # Legacy components
+│   │
+│   ├── constants/
+│   │   └── theme.ts      # Design tokens (colors, spacing, typography)
+│   │
+│   ├── screens/          # Screen implementations
+│   │   ├── HomeScreen.tsx
+│   │   └── MeetupRoomScreen.tsx
+│   │
+│   └── navigation/       # Legacy React Navigation setup (unused)
+│
+├── DESIGN_SYSTEM.md      # Comprehensive design documentation
+├── DESIGN_SPECS.md       # Developer cheat sheet
+└── REDESIGN_SUMMARY.md   # Change log for current redesign
+```
+
+---
+
+## 🚀 Getting Started
+
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Start the development server**:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Run on device/simulator**:
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan QR code with Expo Go app
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🛠 Tech Stack
 
-## Get a fresh project
+- **Framework**: React Native (via Expo)
+- **Routing**: Expo Router (v3)
+- **Language**: TypeScript
+- **Styling**: StyleSheet API with custom design tokens
+- **Icons**: react-native-svg
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
-```
+## 📝 Developer Notes
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- **Navigation**: The app uses `expo-router` as the primary navigation library. `App.tsx` and `src/navigation/` are legacy artifacts and can be ignored.
+- **Icons**: Always use the `<Icon />` component from `src/components/Icon.tsx`. Do not use emojis in UI elements.
+- **Theming**: Import colors and spacing from `src/constants/theme.ts`. Avoid hardcoding values.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+**Last Updated**: February 13, 2026
+**Version**: 1.0.0
