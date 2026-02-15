@@ -26,18 +26,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
       console.log('Failed to get push token for push notification!');
       return null;
     }
-    
+
     // Get the token from expo-notifications
-    const projectId = 
-      Constants?.expoConfig?.extra?.eas?.projectId ?? 
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId;
-    
+
     try {
       token = (await Notifications.getExpoPushTokenAsync({
         projectId,
       })).data;
-    } catch (e) {
-      console.error('Error fetching push token:', e);
+    } catch (e: any) {
+      const errorMessage = e?.message || String(e);
+      if (errorMessage.includes('FirebaseApp is not initialized')) {
+        console.warn('Push Notifications not configured: Missing google-services.json. Skipping registration.');
+      } else {
+        console.error('Error fetching push token:', e);
+      }
     }
   } else {
     console.log('Must use physical device for Push Notifications');

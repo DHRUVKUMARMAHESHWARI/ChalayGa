@@ -110,3 +110,66 @@ export const deleteCircle = async (id: string) => {
     throw error;
   }
 };
+
+export const getPendingInvites = async () => {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${CIRCLES_API_URL}/requests`, {
+      method: "GET",
+      headers: {
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch pending invites");
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const acceptCircleInvite = async (id: string) => {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${CIRCLES_API_URL}/${id}/accept`, {
+      method: "POST",
+      headers: {
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to accept invite");
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const rejectCircleInvite = async (id: string) => {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${CIRCLES_API_URL}/${id}/reject`, {
+      method: "POST",
+      headers: {
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to reject invite");
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};

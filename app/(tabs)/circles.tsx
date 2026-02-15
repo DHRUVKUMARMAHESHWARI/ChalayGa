@@ -49,7 +49,7 @@ export default function CirclesScreen() {
 
   const renderCircleItem = ({ item, index }: { item: any, index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 100).duration(500)}>
-      <Pressable 
+      <Pressable
         style={styles.circleCard}
         onPress={() => router.push(`/circle/${item._id}`)}
       >
@@ -70,16 +70,24 @@ export default function CirclesScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Circles</Text>
-        <Pressable
-          style={styles.addButton}
-          onPress={() => router.push("/create-circle")}
-        >
-          <Icon name="plus" size={20} color={COLORS.white} />
-          <Text style={styles.addButtonText}>New Circle</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pressable
+            onPress={() => router.push("/circle-requests")}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <Icon name="mail" size={24} color={COLORS.primary} />
+          </Pressable>
+          <Pressable
+            style={styles.addButton}
+            onPress={() => router.push("/create-circle")}
+          >
+            <Icon name="plus" size={20} color={COLORS.white} />
+            <Text style={styles.addButtonText}>New Circle</Text>
+          </Pressable>
+        </View>
       </View>
 
       {loading && !refreshing ? (

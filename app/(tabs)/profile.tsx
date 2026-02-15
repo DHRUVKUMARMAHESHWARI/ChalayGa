@@ -19,10 +19,24 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [pushToken, setPushToken] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
+    checkPushToken();
   }, []);
+
+  const checkPushToken = async () => {
+    try {
+      // We can't easily get the storage token here without exporting a getter, 
+      // but we can try to register again which retrieves the existing token
+      const { registerForPushNotifications } = require("../../src/notifications/registerPushToken");
+      const token = await registerForPushNotifications();
+      setPushToken(token);
+    } catch (e) {
+      console.log("Error fetching token for display:", e);
+    }
+  };
 
   const loadProfile = async () => {
     try {
@@ -41,8 +55,8 @@ export default function ProfileScreen() {
       "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Logout", 
+        {
+          text: "Logout",
           style: "destructive",
           onPress: async () => {
             await clearAuthData();
@@ -64,17 +78,17 @@ export default function ProfileScreen() {
 
   const initials = profile?.name
     ? profile.name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
     : "??";
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <StatusBar style="dark" />
-      
+
       <Animated.View entering={FadeInUp.duration(600)} style={styles.header}>
         <Animated.View entering={ZoomIn.delay(300).duration(500)} style={styles.avatarContainer}>
           <Text style={styles.avatarText}>{initials}</Text>
@@ -85,7 +99,7 @@ export default function ProfileScreen() {
 
       <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.section}>
         <Text style={styles.sectionTitle}>Account Details</Text>
-        
+
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
@@ -97,7 +111,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View style={[styles.infoRow, styles.noBorder]}>
+          <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
               <Icon name="phone" size={20} color={COLORS.primary} />
             </View>
@@ -106,12 +120,29 @@ export default function ProfileScreen() {
               <Text style={styles.infoValue}>{profile?.phone || "Not provided"}</Text>
             </View>
           </View>
+
+          <View style={[styles.infoRow, styles.noBorder]}>
+            <View style={styles.infoIcon}>
+              <Icon name="bell" size={20} color={COLORS.primary} />
+            </View>
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoLabel}>Push Token Status</Text>
+              <Text style={styles.infoValue} numberOfLines={1}>
+                {pushToken ? "Active ✅" : "Inactive ❌"}
+              </Text>
+              {pushToken && (
+                <Text style={{ fontSize: 10, color: COLORS.textTertiary }} numberOfLines={1} ellipsizeMode="middle">
+                  {pushToken}
+                </Text>
+              )}
+            </View>
+          </View>
         </View>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.delay(400).duration(600)} style={styles.section}>
         <Text style={styles.sectionTitle}>Account Actions</Text>
-        
+
         <Pressable
           style={({ pressed }) => [
             styles.logoutButton,
