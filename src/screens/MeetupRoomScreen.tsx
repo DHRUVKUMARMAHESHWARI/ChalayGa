@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView, Share, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Share, ActivityIndicator, Alert, Modal, TextInput } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS, TYPOGRAPHY, SPACING, SIZES, SHADOWS } from "../constants/theme";
 import Icon from "../components/Icon";
-import { getMeetup, joinMeetup } from "../api/meetupApi";
+import { getMeetup, joinMeetup, deleteMeetup, updateMeetup, inviteCircleToMeetup, inviteUserToMeetup } from "../api/meetupApi";
+import { getMyCircles } from "../api/circleApi";
 import socket from "../socket/socket";
 
 interface MeetupRoomScreenProps {
@@ -28,6 +30,10 @@ export default function MeetupRoomScreen({
   const [loading, setLoading] = useState(true);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [circles, setCircles] = useState<any[]>([]);
+  const [isCircleModalVisible, setIsCircleModalVisible] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
 
   const fetchMeetupData = async () => {
     if (!meetupId) return;
@@ -80,8 +86,18 @@ export default function MeetupRoomScreen({
 
       socket.on("meetupUpdated", onMeetupUpdated);
 
+      const onMeetupDeleted = (data: any) => {
+        if (data.meetupId === meetupId) {
+          Alert.alert("Plan Deleted", "This plan has been removed by the host.", [
+            { text: "OK", onPress: () => navigation.back() }
+          ]);
+        }
+      };
+      socket.on("meetupDeleted", onMeetupDeleted);
+
       return () => {
         socket.off("meetupUpdated", onMeetupUpdated);
+        socket.off("meetupDeleted", onMeetupDeleted);
       };
     }
   }, [user, meetupId]);
@@ -148,14 +164,100 @@ export default function MeetupRoomScreen({
     }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ marginTop: SPACING.md, ...TYPOGRAPHY.bodyRegular }}>Loading Room...</Text>
-      </View>
+  const isHost = user && meetupData && meetupData.hostId === user.id;
+
+  const handleDeleteMeetup = () => {
+    Alert.alert(
+      "Delete Plan",
+      "Are you sure you want to delete this plan? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteMeetup(meetupId);
+              navigation.back();
+            } catch (error) {
+              console.error("Error deleting meetup:", error);
+              Alert.alert("Error", "Failed to delete plan.");
+              setLoading(false);
+            }
+          }
+        }
+      ]
     );
-  }
+  };
+
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+
+  const handleEditMeetup = () => {
+    setEditedTitle(meetupData?.title || "");
+    setIsEditModalVisible(true);
+  };
+
+  const performTitleUpdate = async () => {
+    if (!editedTitle.trim()) return;
+    try {
+      setUpdating(true);
+      const updated = await updateMeetup(meetupId, { title: editedTitle.trim() });
+      setMeetupData(updated);
+      setIsEditModalVisible(false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to update title.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const [isUpdating, setUpdating] = useState(false);
+
+  const fetchCircles = async () => {
+    try {
+      const data = await getMyCircles();
+      setCircles(data);
+    } catch (error) {
+      console.error("Error fetching circles:", error);
+    }
+  };
+
+  const handleInviteUser = async () => {
+    if (!inviteUsername.trim()) return;
+    try {
+      setIsInviting(true);
+      const updated = await inviteUserToMeetup(meetupId, inviteUsername.trim());
+      setMeetupData(updated);
+      setInviteUsername("");
+      Alert.alert("Success", `Invited @${inviteUsername}`);
+    } catch (error: any) {
+      Alert.alert("Invite Failed", error.message || "Could not invite user.");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleInviteCircle = async (circleId: string) => {
+    try {
+      setIsInviting(true);
+      const updated = await inviteCircleToMeetup(meetupId, circleId);
+      setMeetupData(updated);
+      setIsCircleModalVisible(false);
+      Alert.alert("Success", "Circle invited successfully!");
+    } catch (error: any) {
+      Alert.alert("Invite Failed", error.message || "Could not invite circle.");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isHost) {
+      fetchCircles();
+    }
+  }, [isHost]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,8 +270,8 @@ export default function MeetupRoomScreen({
           <Icon name="arrow-left" size={24} color={COLORS.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Meetup Details</Text>
-        <Pressable style={styles.shareButton}>
-          <Icon name="users" size={24} color={COLORS.textSecondary} />
+        <Pressable style={styles.shareButton} onPress={handleShare}>
+          <Icon name="external-link" size={20} color={COLORS.textSecondary} />
         </Pressable>
       </View>
 
@@ -180,7 +282,7 @@ export default function MeetupRoomScreen({
             {meetupData?.title || `${meetupType.charAt(0).toUpperCase() + meetupType.slice(1)} Plan`}
           </Text>
           <Text style={styles.meetupSubtitle}>
-            {meetupData?.hostName || "Someone"} started a {meetupType} meetup
+            {meetupData?.hostName || "Someone"} started a {meetupType} meetup • {meetupData?.visibility || 'private'}
           </Text>
           
           {/* Poll Counters */}
@@ -216,35 +318,6 @@ export default function MeetupRoomScreen({
             <Text style={styles.shareInviteText}>Share Link 🔗</Text>
           </Pressable>
         </View>
-
-        {/* Location Card - Only show if finalized/selected */}
-        {meetupData?.selectedLocation && (
-          <View style={styles.locationCard}>
-            <Text style={styles.locationLabel}>BEST SPOT</Text>
-            <Text style={styles.locationName}>{meetupData.selectedLocation.name}</Text>
-            
-            <View style={styles.locationDetails}>
-              {meetupData.selectedLocation.rating && (
-                <>
-                  <View style={styles.locationDetail}>
-                    <Icon name="star" size={16} color={COLORS.textSecondary} />
-                    <Text style={styles.locationDetailText}>{meetupData.selectedLocation.rating}</Text>
-                  </View>
-                  <Text style={styles.locationDetailDivider}>•</Text>
-                </>
-              )}
-              <View style={styles.locationDetail}>
-                <Icon name="map-pin" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.locationDetailText}>{meetupData.selectedLocation.address || 'Location Details'}</Text>
-              </View>
-            </View>
-
-            <Pressable style={styles.viewMapButton}>
-              <Text style={styles.viewMapText}>View on Map</Text>
-              <Icon name="arrow-right" size={14} color={COLORS.primary} />
-            </Pressable>
-          </View>
-        )}
 
         {/* Attendance Section - Who's In? */}
         <View style={styles.section}>
@@ -287,8 +360,6 @@ export default function MeetupRoomScreen({
             {isVoting && <ActivityIndicator size="small" color={COLORS.primary} />}
           </View>
           <View style={styles.responseContainer}>
-             {/* Keep existing radio buttons logic but ensuring it renders correctly */}
-             {/* I will keep the radio buttons as they are in the original file, just ensuring context remains valid */}
             <Pressable
               style={[
                 styles.radioOption,
@@ -363,32 +434,175 @@ export default function MeetupRoomScreen({
           </View>
         </View>
 
-        {/* Share Location Button Card */}
-        <View style={styles.section}>
-          <Pressable style={styles.shareLocationButton}>
-            <Icon name="map-pin" size={20} color={COLORS.primary} />
-            <Text style={styles.shareLocationText}>
-              Share Location for Best Suggestion
-            </Text>
-          </Pressable>
-        </View>
+        {/* Invite People Section (Host Only) */}
+        {isHost && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invite People</Text>
+            
+            {/* Invite by Username */}
+            <View style={styles.inviteInputRow}>
+              <TextInput
+                style={styles.inviteInput}
+                placeholder="Friend's username"
+                placeholderTextColor={COLORS.textTertiary}
+                value={inviteUsername}
+                onChangeText={setInviteUsername}
+                autoCapitalize="none"
+              />
+              <Pressable 
+                style={[styles.inviteButton, !inviteUsername.trim() && { opacity: 0.5 }]}
+                onPress={handleInviteUser}
+                disabled={isInviting || !inviteUsername.trim()}
+              >
+                {isInviting ? <ActivityIndicator size="small" color={COLORS.white} /> : (
+                  <Text style={styles.inviteButtonText}>Invite</Text>
+                )}
+              </Pressable>
+            </View>
 
-        {/* Lock Plan Button */}
-        <View style={styles.section}>
-          <Pressable 
-            style={styles.lockButton}
-            onPress={() => navigation.push({
-              pathname: "/suggestion",
-              params: { meetupCode, meetupId }
-            })}
-          >
-            <Text style={styles.lockButtonText}>Lock the Plan</Text>
-            <Icon name="arrow-right" size={20} color={COLORS.white} />
-          </Pressable>
-        </View>
+            {/* Invite Circle */}
+            <Pressable 
+              style={styles.inviteCircleBtn}
+              onPress={() => setIsCircleModalVisible(true)}
+            >
+              <Icon name="users" size={18} color={COLORS.primary} />
+              <Text style={styles.inviteCircleBtnText}>Invite from Circles</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Host Controls */}
+        {isHost && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: COLORS.textSecondary }]}>Host Controls</Text>
+            <View style={styles.hostControlsRow}>
+              <Pressable 
+                style={[styles.controlButton, { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1 }]}
+                onPress={handleEditMeetup}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <ActivityIndicator size="small" color={COLORS.primary} /> : (
+                  <>
+                    <Icon name="edit-3" size={18} color={COLORS.textPrimary} />
+                    <Text style={[styles.controlButtonText, { color: COLORS.textPrimary }]}>Edit Title</Text>
+                  </>
+                )}
+              </Pressable>
+              
+              <Pressable 
+                style={[styles.controlButton, { backgroundColor: '#FFEBEB' }]}
+                onPress={handleDeleteMeetup}
+              >
+                <Icon name="trash-2" size={18} color={COLORS.danger} />
+                <Text style={[styles.controlButtonText, { color: COLORS.danger }]}>Delete Plan</Text>
+              </Pressable>
+            </View>
+
+            <Pressable 
+              style={styles.lockButton}
+              onPress={() => navigation.push({
+                pathname: "/suggestion",
+                params: { meetupCode, meetupId }
+              })}
+            >
+              <Text style={styles.lockButtonText}>Find Best Suggestion</Text>
+              <Icon name="zap" size={20} color={COLORS.white} />
+            </Pressable>
+          </View>
+        )}
+
+        {!isHost && (
+          <View style={styles.section}>
+             <Pressable style={styles.shareLocationButton}>
+                <Icon name="map-pin" size={20} color={COLORS.primary} />
+                <Text style={styles.shareLocationText}>
+                Share Location with Host
+                </Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <Modal
+        visible={isEditModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <View style={styles.editModalOverlay}>
+          <View style={styles.editModalContent}>
+            <Text style={styles.editModalTitle}>Edit Plan Title</Text>
+            <TextInput
+              style={styles.editModalInput}
+              value={editedTitle}
+              onChangeText={setEditedTitle}
+              placeholder="Enter new title"
+              autoFocus
+            />
+            <View style={styles.editModalButtons}>
+              <Pressable 
+                style={[styles.editModalButton, { backgroundColor: COLORS.border }]}
+                onPress={() => setIsEditModalVisible(false)}
+              >
+                <Text style={styles.editModalButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.editModalButton, { backgroundColor: COLORS.primary }]}
+                onPress={performTitleUpdate}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <Text style={[styles.editModalButtonText, { color: COLORS.white }]}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Circle Selection Modal */}
+      <Modal
+        visible={isCircleModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsCircleModalVisible(false)}
+      >
+        <View style={styles.circleModalOverlay}>
+          <View style={styles.circleModalContent}>
+            <View style={styles.circleModalHeader}>
+              <Text style={styles.circleModalTitle}>Your Circles</Text>
+              <Pressable onPress={() => setIsCircleModalVisible(false)}>
+                <Icon name="x" size={24} color={COLORS.textPrimary} />
+              </Pressable>
+            </View>
+            
+            <ScrollView style={styles.circleList}>
+              {circles.length === 0 ? (
+                <Text style={styles.emptyCirclesText}>No circles found. Create one in the Circles tab!</Text>
+              ) : (
+                circles.map((circle) => (
+                  <Pressable 
+                    key={circle._id}
+                    style={styles.circleOption}
+                    onPress={() => handleInviteCircle(circle._id)}
+                  >
+                    <View style={styles.circleIcon}>
+                      <Icon name="users" size={20} color={COLORS.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.circleName}>{circle.name}</Text>
+                      <Text style={styles.circleMembers}>{circle.members.length} members</Text>
+                    </View>
+                  </Pressable>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -702,5 +916,179 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     fontWeight: "600",
     color: COLORS.primary,
+  },
+  hostControlsRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  controlButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: SIZES.radius,
+    gap: 8,
+  },
+  controlButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  
+  // Edit Modal Styles
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  editModalContent: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusLarge,
+    padding: SPACING.xl,
+    ...SHADOWS.level3,
+  },
+  editModalTitle: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
+  },
+  editModalInput: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SPACING.md,
+    ...TYPOGRAPHY.bodyRegular,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.lg,
+    backgroundColor: COLORS.background,
+  },
+  editModalButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  editModalButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: SIZES.radius,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editModalButtonText: {
+    ...TYPOGRAPHY.bodyRegular,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  
+  // Invite Section Styles
+  inviteInputRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  inviteInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SPACING.md,
+    ...TYPOGRAPHY.bodyRegular,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.surface,
+  },
+  inviteButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.level1,
+  },
+  inviteButtonText: {
+    color: COLORS.white,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  inviteCircleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.primaryLight + '10',
+  },
+  inviteCircleBtnText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Circle Modal Styles
+  circleModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  circleModalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: '50%',
+    maxHeight: '80%',
+    padding: SPACING.xl,
+  },
+  circleModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  circleModalTitle: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.textPrimary,
+  },
+  circleList: {
+    marginBottom: SPACING.xl,
+  },
+  emptyCirclesText: {
+    ...TYPOGRAPHY.bodyRegular,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.xl,
+  },
+  circleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  circleIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primaryLight + '30',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circleName: {
+    ...TYPOGRAPHY.bodyLarge,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  circleMembers: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
   },
 });

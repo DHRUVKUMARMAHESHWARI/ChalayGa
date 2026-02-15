@@ -16,7 +16,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = React.useState(false);
   const [user, setUser] = React.useState<any>(null);
-  const [meetups, setMeetups] = React.useState<any[]>([]);
+  const [myPlans, setMyPlans] = React.useState<any[]>([]);
+  const [demoPlans] = React.useState([
+    { _id: 'd1', title: 'Weekend Coffee', type: 'cafe', hostName: 'Rohan', distance: '0.5 km' },
+    { _id: 'd2', title: 'Morning Jog', type: 'walk', hostName: 'Ridhi', distance: '1.2 km' },
+    { _id: 'd3', title: 'Pizza Party', type: 'food', hostName: 'Yash', distance: '2.0 km' },
+  ]);
 
   // Search states
   const [isSearchVisible, setIsSearchVisible] = React.useState(false);
@@ -26,8 +31,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const fetchRecentMeetups = async () => {
     try {
-      const data = await getAllMeetups();
-      setMeetups(data);
+      const data = await getAllMeetups({ my: true });
+      setMyPlans(data || []);
     } catch (error) {
       console.error("Error fetching meetups:", error);
     }
@@ -59,7 +64,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         hostUsername: user.username,
         type,
         code,
-        title
+        title,
+        visibility: 'private' // Default to private
       });
       
       const newMeetup = response.meetupId ? response : response.data;
@@ -115,7 +121,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       >
         {/* Minimal Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>INDEX</Text>
+          <Text style={styles.logo}>CHALAYGA?</Text>
           <View style={styles.headerIcons}>
             <Pressable 
               style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -167,17 +173,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </Pressable>
         </View>
 
-        {/* Recent Plans Section */}
-        {meetups.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Plans ✨</Text>
-              <Pressable onPress={fetchRecentMeetups}>
-                <Text style={styles.viewAllLink}>Refresh</Text>
-              </Pressable>
-            </View>
-            
-            {meetups.slice(0, 3).map((meetup) => (
+        {/* Your Plans Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Plans ✨</Text>
+            <Pressable onPress={fetchRecentMeetups}>
+              <Text style={styles.viewAllLink}>Refresh</Text>
+            </Pressable>
+          </View>
+          
+          {myPlans.length > 0 ? (
+            myPlans.slice(0, 3).map((meetup) => (
               <Pressable 
                 key={meetup._id}
                 style={[styles.recentPlanCard, { marginBottom: SPACING.sm }]}
@@ -187,7 +193,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                     meetupId: meetup._id,
                     meetupType: meetup.type,
                     meetupCode: meetup.code,
-                    hostName: meetup.hostName
+                    hostName: meetup.hostName,
+                    meetupTitle: meetup.title
                   }
                 })}
               >
@@ -199,14 +206,49 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   />
                 </View>
                 <View style={styles.planInfo}>
-                  <Text style={styles.planTitle}>{meetup.type.charAt(0).toUpperCase() + meetup.type.slice(1)} Meetup</Text>
-                  <Text style={styles.planSubtitle}>{meetup.participants?.length || 0} People Interested</Text>
+                  <Text style={styles.planTitle}>{meetup.title || 'Untitled Plan'}</Text>
+                  <Text style={styles.planSubtitle}>{meetup.participants?.length || 0} People • {meetup.status}</Text>
                 </View>
                 <Icon name="arrow-right" size={16} color={COLORS.textTertiary} />
               </Pressable>
-            ))}
+            ))
+          ) : (
+            <Text style={{ ...TYPOGRAPHY.bodySmall, color: COLORS.textTertiary, textAlign: 'center', marginVertical: 10 }}>
+              No plans yet. Start by picking a category!
+            </Text>
+          )}
+        </View>
+
+        {/* Near You (Demo) Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Near You (Demo)</Text>
+            <View style={styles.demoBadge}>
+                <Text style={styles.demoBadgeText}>UI ONLY</Text>
+            </View>
           </View>
-        )}
+          
+          {demoPlans.map((plan) => (
+            <Pressable 
+              key={plan._id}
+              style={[styles.recentPlanCard, { marginBottom: SPACING.sm, opacity: 0.8 }]}
+              onPress={() => Alert.alert("Demo Mode", "This is a dummy public plan for UI demonstration purposes.")}
+            >
+              <View style={[styles.planIconContainer, { backgroundColor: COLORS.border }]}>
+                <Icon 
+                  name={plan.type === 'cafe' ? 'coffee' : plan.type === 'walk' ? 'footprints' : 'utensils'} 
+                  size={20} 
+                  color={COLORS.textSecondary} 
+                />
+              </View>
+              <View style={styles.planInfo}>
+                <Text style={styles.planTitle}>{plan.title}</Text>
+                <Text style={styles.planSubtitle}>By {plan.hostName} • {plan.distance}</Text>
+              </View>
+              <Icon name="lock" size={16} color={COLORS.textTertiary} />
+            </Pressable>
+          ))}
+        </View>
 
         {/* Category Cards - "Plan a Meetup" */}
         <View style={styles.section}>
@@ -542,6 +584,17 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodyRegular,
     color: COLORS.primary,
     fontWeight: "500",
+  },
+  demoBadge: {
+    backgroundColor: COLORS.border,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  demoBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: COLORS.textSecondary,
   },
   
   // Recent Plan Card

@@ -6,8 +6,8 @@ import {
   Pressable,
   FlatList,
   Dimensions,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";

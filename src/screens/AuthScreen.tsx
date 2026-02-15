@@ -18,6 +18,8 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { COLORS, TYPOGRAPHY, SPACING, SIZES, SHADOWS } from "../constants/theme";
 import { signup, login } from "../api/authApi";
 import { storeAuthData } from "../api/storage";
+import { registerForPushNotifications } from "../notifications/registerPushToken";
+import { savePushToken } from "../api/userApi";
 import Icon from "../components/Icon";
 
 export default function AuthScreen() {
@@ -54,6 +56,18 @@ export default function AuthScreen() {
 
       if (response.success) {
         await storeAuthData(response.token, response.user);
+        
+        // Register for push notifications
+        try {
+          const pushToken = await registerForPushNotifications();
+          if (pushToken) {
+            await savePushToken(pushToken);
+          }
+        } catch (pushError) {
+          console.log("Failed to register for push notifications:", pushError);
+          // Don't block user if push registration fails
+        }
+        
         router.replace("/");
       }
     } catch (error: any) {
