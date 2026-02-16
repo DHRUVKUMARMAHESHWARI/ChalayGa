@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "187256270461",
+    "project_id": "chalayga-9d0b3",
+    "storage_bucket": "chalayga-9d0b3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:187256270461:android:d230e4c8fc977983690b14",
+        "android_client_info": {
+          "package_name": "com.varun_kumar_maheshwari.ChalayGa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOcHR9vTbMmwT8SZZe5oVNOZkxzrWK-vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
