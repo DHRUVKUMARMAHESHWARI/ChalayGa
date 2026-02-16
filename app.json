@@ -13,13 +13,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-background.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-background.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.varun_kumar_maheshwari.ChalayGa",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.dhruvkumarmaheshwari.ChalayGa"
     },
     "web": {
       "output": "static",
@@ -47,7 +48,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2f018c78-228c-412a-80b7-ff80509a0150"
+        "projectId": "a0336aa5-789a-4ff7-a413-cbb3297b37a7"
       }
     }
   }
